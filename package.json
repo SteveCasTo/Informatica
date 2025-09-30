@@ -1,0 +1,27 @@
+{
+  "name": "infovault",
+  "version": "1.0.0",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:mobile\"",
+    "dev:android": "concurrently \"npm run dev:api\" \"npm run dev:mobile:android\"",
+    "dev:api": "cd apps/api && npm run dev",
+    "dev:mobile": "cd apps/mobile && npm start",
+    "dev:mobile:android": "cd apps/mobile && npm run android",
+    "build": "turbo run build",
+    "lint": "turbo run lint"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.0.0",
+    "eslint": "^9.36.0",
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.8"
+  }
+}

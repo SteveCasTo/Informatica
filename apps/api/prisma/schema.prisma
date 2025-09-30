@@ -1,0 +1,260 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  student
+  administrator
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+enum PublicationStatus {
+  active
+  reported
+  deleted
+  suspended
+}
+
+enum ReportType {
+  spam
+  inappropriate_content
+  prohibited_content
+  plagiarism
+  other
+}
+
+enum ReportStatus {
+  pending
+  reviewed
+  resolved
+  rejected
+}
+
+enum RatingType {
+  like
+  dislike
+}
+
+enum ActivityType {
+  new_publication
+  report_publication
+  material_uploaded
+  user_banned
+  user_registered
+  rating_added
+  comment_added
+}
+
+model User {
+  user_id         Int       @id @default(autoincrement())
+  google_id       String?   
+  email           String    @unique
+  username        String
+  password_hash   String
+  user_role       UserRole
+  profile_picture String?   
+  status          UserStatus
+  registration_date DateTime @default(now())
+  active          Boolean   @default(true)
+
+  reports_made     Report[]     @relation("UserReports")
+  reports_reviewed Report[]     @relation("AdminReviews")
+  publications     Publication[]
+  comments         Comment[]
+  ratings          Rating[]
+  notifications    Notification[]
+  enrollments      SubjectEnrollment[]
+  statistics       UserStatistic?
+
+  @@map("users")
+}
+
+model Report {
+  report_id         Int         @id @default(autoincrement())
+  publication_id    Int?
+  reporter_user_id  Int
+  report_type       ReportType
+  description       String?     
+  report_date       DateTime    @default(now())
+  status            ReportStatus @default(pending)
+  reviewer_admin_id Int?
+  admin_comment     String?     
+  review_date       DateTime?
+
+  reporter    User         @relation("UserReports", fields: [reporter_user_id], references: [user_id], onDelete: Cascade)
+  reviewer    User?        @relation("AdminReviews", fields: [reviewer_admin_id], references: [user_id], onDelete: SetNull)
+  publication Publication? @relation(fields: [publication_id], references: [publication_id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model Publication {
+  publication_id   Int               @id @default(autoincrement())
+  user_id          Int
+  subject_id       Int
+  title            String            
+  description      String?
+  update_date      DateTime?
+  publication_date DateTime          @default(now())
+  views            Int               @default(0)
+  total_ratings    Int               @default(0)
+  total_comments   Int               @default(0)
+  status           PublicationStatus
+  active           Boolean           @default(true)
+
+  user          User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  subject       Subject        @relation(fields: [subject_id], references: [subject_id], onDelete: Cascade)
+  comments      Comment[]
+  ratings       Rating[]
+  files         File[]
+  reports       Report[]
+  notifications Notification[]
+
+  @@map("publications")
+}
+
+model Comment {
+  comment_id    Int       @id @default(autoincrement())
+  publication_id Int
+  user_id       Int
+  comment_data  String    
+  comment_date  DateTime  @default(now())
+  update_date   DateTime?
+  edited        Boolean   @default(false)
+  active        Boolean   @default(true)
+
+  user        User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  publication Publication @relation(fields: [publication_id], references: [publication_id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Rating {
+  rating_id     Int        @id @default(autoincrement())
+  publication_id Int
+  user_id       Int
+  rating_type   RatingType
+  rating_date   DateTime   @default(now())
+
+  user        User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  publication Publication @relation(fields: [publication_id], references: [publication_id], onDelete: Cascade)
+
+  @@map("ratings")
+}
+
+model File {
+  file_id       Int       @id @default(autoincrement())
+  publication_id Int
+  file_type_id  Int
+  file_title    String    
+  description   String?   
+  web_url       String?   
+  filepath      String?   
+  size_bytes    Int?
+  upload_date   DateTime  @default(now())
+  active        Boolean   @default(true)
+
+  publication Publication @relation(fields: [publication_id], references: [publication_id], onDelete: Cascade)
+  file_type   FileType    @relation(fields: [file_type_id], references: [file_type_id], onDelete: Cascade)
+
+  @@map("files")
+}
+
+model FileType {
+  file_type_id Int     @id @default(autoincrement())
+  file_name    String  
+  description  String? 
+  mime_type    String  
+  active       Boolean @default(true)
+
+  files File[]
+
+  @@map("file_types")
+}
+
+model Notification {
+  notification_id Int       @id @default(autoincrement())
+  user_id         Int
+  title           String    
+  message         String?
+  publication_id  Int?
+  subject_id      Int?
+  read_state      Boolean   @default(false)
+  creation_date   DateTime  @default(now())
+
+  user        User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  publication Publication? @relation(fields: [publication_id], references: [publication_id], onDelete: Cascade)
+  subject     Subject?     @relation(fields: [subject_id], references: [subject_id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Subject {
+  subject_id   Int       @id @default(autoincrement())
+  subject_name String    
+  description  String?   
+  active       Boolean   @default(true)
+  creation_date DateTime @default(now())
+
+  publications Publication[]
+  enrollments  SubjectEnrollment[]
+  notifications Notification[]
+
+  @@map("subjects")
+}
+
+model SubjectEnrollment {
+  enrollment_id Int       @id @default(autoincrement())
+  user_id       Int
+  subject_id    Int
+  enrollment_date DateTime @default(now())
+  active        Boolean   @default(true)
+
+  user    User    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  subject Subject @relation(fields: [subject_id], references: [subject_id], onDelete: Cascade)
+
+  @@map("subject_enrollments")
+}
+
+model UserStatistic {
+  statistic_id       Int @id @default(autoincrement())
+  user_id            Int @unique
+  views_made         Int @default(0)
+  materials_published Int @default(0)
+  reports_made       Int @default(0)
+  reports_received   Int @default(0)
+  files_downloaded   Int @default(0)
+  comments_made      Int @default(0)
+  ratings_given      Int @default(0)
+  active             Boolean @default(true)
+  update_date        DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("user_statistics")
+}
+
+model Activity {
+  activity_id       Int          @id @default(autoincrement())
+  activity_type     ActivityType
+  user_id           Int?
+  publication_id    Int?
+  subject_id        Int?
+  user_name         String? 
+  publication_title String? 
+  subject_name      String? 
+  description       String? 
+  activity_date     DateTime @default(now())
+
+  @@map("activity")
+}

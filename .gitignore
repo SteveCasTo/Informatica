@@ -1,0 +1,20 @@
+node_modules/
+
+.env
+.env.local
+
+# API
+apps/api/dist/
+apps/api/build/
+apps/api/uploads/
+apps/api/prisma/migrations/
+
+# Mobile
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/web-build/
+apps/mobile/.expo-shared/
+
+# React Native
+apps/mobile/android/
+apps/mobile/ios/
