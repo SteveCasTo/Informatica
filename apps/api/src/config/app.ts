@@ -61,7 +61,7 @@ export const appConfig = {
 
   getFrontendUrl: (userAgent?: string, referer?: string, query?: RedirectQuery): string => {
     if (isMobileRequest(userAgent, referer, query)) {
-      console.log('📱 Request desde móvil');
+      console.log('Request desde móvil');
       return urls.frontendUrl;
     }
     return urls.frontendUrl;
@@ -69,7 +69,7 @@ export const appConfig = {
 
   getBackendUrl: (userAgent?: string, referer?: string, query?: RedirectQuery): string => {
     if (isMobileRequest(userAgent, referer, query)) {
-      console.log('📱 Usando backend móvil:', urls.mobileBackendUrl);
+      console.log('Usando backend móvil:', urls.mobileBackendUrl);
       return urls.mobileBackendUrl;
     }
     return urls.backendUrl;
@@ -97,16 +97,16 @@ export const appConfig = {
 
   shouldRedirect: (userAgent?: string, referer?: string, query?: RedirectQuery): boolean => {
     if (isMobileRequest(userAgent, referer, query)) {
-      console.log('📱 Request desde móvil - retornando JSON');
+      console.log('Request desde móvil - retornando JSON');
       return false;
     }
     
     if (query?.redirect === 'web') {
-      console.log('🌐 Redirect explícito a web');
+      console.log('Redirect explícito a web');
       return true;
     }
     
-    console.log('📄 Retornando JSON por defecto');
+    console.log('Retornando JSON por defecto');
     return false;
   }
 };

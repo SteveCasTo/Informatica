@@ -1,13 +1,13 @@
 import { Request, Response } from 'express'
 import { AuthService } from '../services/authService'
 import { GoogleAuthService } from '../services/googleAuthService'
-import { prisma } from '../config/database' // ← Si tienes prisma configurado
+import { prisma } from '../config/database'
 import { validateLogin } from '../validators/authValidator'
 import { AuthResponse } from '../types/auth'
 import { googleConfig } from '../config/google'
 import { asyncHandler, createError } from '../middleware/errorHandler'
-import { MobileAuthService } from '../services/mobileAuthService'
 
+const { EXPO_PUBLIC_API_URL } = process.env;
 export class AuthController {
   constructor(private authService: AuthService) {}
 
@@ -28,7 +28,6 @@ export class AuthController {
   googleAuth = asyncHandler(async (req: Request, res: Response) => {
     const googleAuthService = new GoogleAuthService()
     const authUrl = googleAuthService.generateAuthUrl()
-    console.log('🔗 [Web] authUrl generado:', authUrl)
 
     res.json({
       success: true,
@@ -65,9 +64,6 @@ export class AuthController {
       throw createError('code y redirectUri son requeridos', 400);
     }
 
-    console.log('Intercambiando código por token...');
-    console.log('Redirect URI recibido:', redirectUri);
-
     // Usar el redirectUri que viene del cliente
     const result = await this.authService.processGoogleAuth(code, redirectUri);
 
@@ -78,13 +74,8 @@ export class AuthController {
   })
 
   // Callback específico para móvil con logs detallados
-  googleMobileCallback = asyncHandler(async (req: Request, res: Response) => {
-    console.log('🔄 [MOBILE CALLBACK] Iniciando callback móvil');
-    console.log('📋 [MOBILE CALLBACK] Query completo:', req.query);
-    console.log('🔍 [MOBILE CALLBACK] Headers:', req.headers);
-    
+  googleMobileCallback = asyncHandler(async (req: Request, res: Response) => {    
     const code = req.query.code as string;
-    const state = req.query.state as string;
     const error = req.query.error as string;
 
     // Crear función helper para páginas de redirección
@@ -162,7 +153,6 @@ export class AuthController {
 
     // Verificar si hay error de Google
     if (error) {
-      console.error('❌ [MOBILE CALLBACK] Error de Google:', error);
       const errorPage = createRedirectPage(
         `exp://192.168.0.27:8081?error=${error}`,
         `Error de Google: ${error}`
@@ -171,38 +161,27 @@ export class AuthController {
     }
 
     if (!code) {
-      console.error('❌ [MOBILE CALLBACK] No se recibió código');
       const errorPage = createRedirectPage(
-        'exp://192.168.0.27:8081?error=no_code',
+        'exp://192.168.42.25:8081?error=no_code',
         'Error: No se recibió código'
       );
       return res.send(errorPage);
     }
 
-    console.log('✅ [MOBILE CALLBACK] Código recibido:', code);
-
-    try {
-      console.log('🔄 [MOBILE CALLBACK] Procesando autenticación...');
-      
-      // CORREGIR: Usar el redirect URI correcto para móvil
+    try {      
       const result = await this.authService.processGoogleAuth(
-        code, 
-        'https://unplunderous-tolerative-trinh.ngrok-free.dev/api/auth/google/mobile/callback'
+        code,
+        EXPO_PUBLIC_API_URL+'/api/auth/google/mobile/callback'
       );
 
-      console.log('✅ [MOBILE CALLBACK] Autenticación exitosa para:', (result.user as any)?.email);
+      const deepLink = `exp://192.168.42.25:8081?token=${encodeURIComponent(result.token)}&user=${encodeURIComponent(JSON.stringify(result.user))}`;
 
-      const deepLink = `exp://192.168.0.27:8081?token=${encodeURIComponent(result.token)}&user=${encodeURIComponent(JSON.stringify(result.user))}`;
-      
-      console.log('🔀 [MOBILE CALLBACK] Generando deep link:', deepLink);
-      
       const successPage = createRedirectPage(deepLink, '¡Autenticación exitosa!');
       return res.send(successPage);
 
-    } catch (error) {
-      console.error('❌ [MOBILE CALLBACK] Error procesando:', error);
+    } catch {
       const errorPage = createRedirectPage(
-        'exp://192.168.0.27:8081?error=auth_failed',
+        'exp://192.168.42.25:8081?error=auth_failed',
         'Error en autenticación'
       );
       return res.send(errorPage);
@@ -211,16 +190,9 @@ export class AuthController {
 
   googleCallback = asyncHandler(async (req: Request, res: Response) => {
     const code = req.query.code as string;
-    const stateRaw = req.query.state as string | undefined;
-    console.log('🔄 [CALLBACK] Callback de Google recibido');
-    console.log('📋 [CALLBACK] Código:', code);
-    console.log('🔍 [CALLBACK] User-Agent:', req.headers['user-agent']);
-    console.log('🔍 [CALLBACK] Referer:', req.headers.referer);
-    console.log('🔍 [CALLBACK] Query completo:', req.query);
 
     if (!code) throw createError('Código de autorización no proporcionado', 400);
 
-    // Función para crear página de redirección
     const createRedirectPage = (deepLink: string, message: string = '¡Autenticación exitosa!') => {
       return `
         <!DOCTYPE html>
@@ -293,20 +265,13 @@ export class AuthController {
     };
 
     try {
-      // Procesar autenticación
       const result = await this.authService.processGoogleAuth(
         code, 
-        'https://unplunderous-tolerative-trinh.ngrok-free.dev/api/auth/google/callback'
+        EXPO_PUBLIC_API_URL+'/api/auth/google/callback'
       );
-
-      const user = result.user as any;
-      console.log('✅ [CALLBACK] Autenticación exitosa para:', user?.email);
-
-      // Detectar si es móvil usando múltiples indicadores
       const userAgent = req.headers['user-agent'] || '';
       const referer = req.headers.referer || '';
       
-      // Mejorar la detección de móvil
       const isMobileUA = userAgent.includes('Mobile') || 
                         userAgent.includes('Android') || 
                         userAgent.includes('iPhone') ||
@@ -319,35 +284,22 @@ export class AuthController {
                              referer.includes('localhost:8081')
                            );
 
-      // También revisar si viene de un WebView (común en apps móviles)
       const isWebView = userAgent.includes('wv') || userAgent.includes('WebView');
 
       const isMobile = isMobileUA || isMobileReferer || isWebView;
 
-      console.log('📱 [CALLBACK] Detección de plataforma:');
-      console.log('  - User-Agent móvil:', isMobileUA);
-      console.log('  - Referer móvil:', isMobileReferer);
-      console.log('  - Es WebView:', isWebView);
-      console.log('  - Resultado final:', isMobile ? 'MÓVIL' : 'WEB');
-
       if (isMobile) {
-        // Para móvil: crear deep link
         const deepLink = `exp://192.168.0.27:8081?token=${encodeURIComponent(result.token)}&user=${encodeURIComponent(JSON.stringify(result.user))}`;
-        console.log('🔀 [CALLBACK] Redirigiendo a app móvil:', deepLink);
         
         const mobilePage = createRedirectPage(deepLink, '¡Autenticación exitosa!');
         return res.send(mobilePage);
       } else {
-        // Para web: redirigir al frontend web
-        const webRedirect = `https://unplunderous-tolerative-trinh.ngrok-free.dev?token=${encodeURIComponent(result.token)}`;
-        console.log('🔀 [CALLBACK] Redirigiendo a web:', webRedirect);
+        const webRedirect = EXPO_PUBLIC_API_URL + `?token=${encodeURIComponent(result.token)}`;
         return res.redirect(webRedirect);
       }
 
     } catch (error) {
-      console.error('❌ [CALLBACK] Error en callback:', error);
-      
-      // Para móvil: página de error
+  
       const userAgent = req.headers['user-agent'] || '';
       const isMobile = userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone');
       
@@ -363,7 +315,6 @@ export class AuthController {
     }
   });
 
-  // Para autenticación nativa (Google Sign-In SDK)
   googleNativeAuth = asyncHandler(async (req: Request, res: Response) => {
     const { idToken } = req.body;
 
@@ -379,7 +330,6 @@ export class AuthController {
     });
   })
 
-  // Endpoint para obtener configuración de Google
   getGoogleConfig = asyncHandler(async (req: Request, res: Response) => {
     const response = {
       success: true,
@@ -392,47 +342,41 @@ export class AuthController {
   })
 
   getProfile = asyncHandler(async (req: Request, res: Response) => {
-    const user = (req as any).user;
+    const user = (req).user;
     
     if (!user) {
       throw createError('Usuario no autenticado', 401);
     }
-
-    try {
-      const userProfile = await prisma.user.findUnique({
-        where: {
-          user_id: user.userId
-        }
-      });
-      
-      if (!userProfile) {
-        throw createError('Usuario no encontrado', 404);
+    const userProfile = await prisma.user.findUnique({
+      where: {
+        user_id: user.userId
       }
-
-      if (!userProfile.active || userProfile.status !== 'active') {
-        throw createError('Usuario suspendido o inactivo', 403);
-      }
-      
-      const response = {
-        success: true,
-        data: {
-          user_id: userProfile.user_id,
-          username: userProfile.username,
-          email: userProfile.email,
-          google_id: userProfile.google_id,
-          profile_picture: userProfile.profile_picture,
-          user_role: userProfile.user_role,
-          status: userProfile.status,
-          registration_date: userProfile.registration_date,
-          active: userProfile.active
-        }
-      };
-      
-      res.json(response);
-      
-    } catch (error) {
-      throw error;
+    });
+    
+    if (!userProfile) {
+      throw createError('Usuario no encontrado', 404);
     }
+
+    if (!userProfile.active || userProfile.status !== 'active') {
+      throw createError('Usuario suspendido o inactivo', 403);
+    }
+    
+    const response = {
+      success: true,
+      data: {
+        user_id: userProfile.user_id,
+        username: userProfile.username,
+        email: userProfile.email,
+        google_id: userProfile.google_id,
+        profile_picture: userProfile.profile_picture,
+        user_role: userProfile.user_role,
+        status: userProfile.status,
+        registration_date: userProfile.registration_date,
+        active: userProfile.active
+      }
+    };
+    
+    res.json(response);
   });
 
   logout = asyncHandler(async (req: Request, res: Response) => {
@@ -446,15 +390,11 @@ export class AuthController {
   exchange = asyncHandler(async (req: Request, res: Response) => {
     const { code, redirectUri } = req.body;
     
-    console.log('🔄 Intercambiando código:', code);
-    console.log('🔗 Redirect URI:', redirectUri);
-    
     if (!code || !redirectUri) {
       throw createError('code y redirectUri son requeridos', 400);
     }
     
     try {
-      // Usar el servicio de autenticación para procesar Google Auth
       const result = await this.authService.processGoogleAuth(code, redirectUri);
       
       res.json({
@@ -462,7 +402,6 @@ export class AuthController {
         data: result
       });
     } catch (error) {
-      console.error('❌ Error intercambiando código:', error);
       throw createError('Error intercambiando código por token', 500);
     }
   });

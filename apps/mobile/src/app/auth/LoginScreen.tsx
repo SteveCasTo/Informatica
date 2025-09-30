@@ -1,169 +1,254 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { 
+  Text, 
+  Button, 
+  ActivityIndicator, 
+  useTheme,
+  Surface,
+  Avatar,
+} from 'react-native-paper';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withRepeat,
+  withSequence,
+  interpolate,
+} from 'react-native-reanimated';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '@react-navigation/native';
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const theme = useTheme();
-  const { loginWithCredentials, loginWithGoogle, isLoading, error } = useAuth();
-  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isEmailLoading] = useState(false);
+export default function LoginScreen() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const { isLoading, loginWithGoogle } = useAuth();
+  const theme = useTheme();
+
+  // Valores animados
+  const logoScale = useSharedValue(0);
+  const logoRotation = useSharedValue(0);
+  const titleOpacity = useSharedValue(0);
+  const centerScale = useSharedValue(0);
+  const centerGlow = useSharedValue(0);
+  const buttonTranslateY = useSharedValue(100);
+  const buttonOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    // Secuencia de animaciones al cargar
+    const startAnimations = () => {
+      // 1. Logo aparece con bounce
+      logoScale.value = withSpring(1, {
+        damping: 8,
+        stiffness: 100,
+      });
+
+      // 2. Logo rota suavemente
+      logoRotation.value = withSequence(
+        withTiming(360, { duration: 1000 }),
+        withRepeat(
+          withTiming(370, { duration: 2000 }),
+          -1,
+          true
+        )
+      );
+
+      // 3. Título aparece con delay
+      setTimeout(() => {
+        titleOpacity.value = withTiming(1, { duration: 800 });
+      }, 300);
+
+      // 4. Centro aparece con escala
+      setTimeout(() => {
+        centerScale.value = withSpring(1, {
+          damping: 6,
+          stiffness: 80,
+        });
+      }, 600);
+
+      // 5. Efecto glow en centro
+      setTimeout(() => {
+        centerGlow.value = withRepeat(
+          withSequence(
+            withTiming(1, { duration: 1500 }),
+            withTiming(0, { duration: 1500 })
+          ),
+          -1,
+          false
+        );
+      }, 1000);
+
+      // 6. Botón sube desde abajo
+      setTimeout(() => {
+        buttonTranslateY.value = withSpring(0, {
+          damping: 8,
+          stiffness: 100,
+        });
+        buttonOpacity.value = withTiming(1, { duration: 600 });
+      }, 900);
+    };
+
+    startAnimations();
+  }, []);
 
   const handleGoogleLogin = async () => {
     try {
+      setIsGoogleLoading(true);
+      
+      // Animación de botón presionado
+      buttonTranslateY.value = withSequence(
+        withTiming(-5, { duration: 100 }),
+        withTiming(0, { duration: 100 })
+      );
+      
       const result = await loginWithGoogle();
       
       if (result.success) {
         console.log('✅ Login con Google exitoso');
+        // Animación de éxito
+        centerScale.value = withSequence(
+          withTiming(1.2, { duration: 200 }),
+          withTiming(1, { duration: 200 })
+        );
       } else {
-        Alert.alert('Error', result.error || 'Error al iniciar sesión con Google');
+        Alert.alert('Error', result.error || 'Error durante el login con Google');
       }
+      
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error inesperado');
+      console.error('❌ Error en login con Google:', error);
+      
+      let errorMessage = 'Error durante el login con Google';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
-  const navigateToRegister = () => {
-    Alert.alert('Información', 'Funcionalidad de registro próximamente disponible');
-  };
+  const isAnyLoading = isLoading || isGoogleLoading;
 
-  const navigateToForgotPassword = () => {
-    Alert.alert('Información', 'Funcionalidad próximamente disponible');
-  };
+  // Estilos animados
+  const animatedLogoStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: logoScale.value },
+      { rotate: `${logoRotation.value}deg` }
+    ],
+  }));
+
+  const animatedTitleStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [
+      { 
+        translateY: interpolate(
+          titleOpacity.value,
+          [0, 1],
+          [20, 0]
+        )
+      }
+    ],
+  }));
+
+  const animatedCenterStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: centerScale.value }],
+    shadowOpacity: interpolate(
+      centerGlow.value,
+      [0, 1],
+      [0.1, 0.4]
+    ),
+    elevation: interpolate(
+      centerGlow.value,
+      [0, 1],
+      [1, 8]
+    ),
+  }));
+
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: buttonTranslateY.value }],
+    opacity: buttonOpacity.value,
+  }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardContainer}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Bienvenido</Text>
-            <Text style={styles.subtitle}>Inicia sesión en tu cuenta</Text>
-          </View>
-
-          {/* Form */}
-          <View style={styles.form}>
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Correo electrónico"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, styles.passwordInput]}
-                placeholder="Contraseña"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.passwordToggle}
-                disabled={isLoading}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color="#666"
+        <View style={styles.content}>
+          
+          {/* Logo/Brand Section - Top */}
+          <View style={styles.brandSection}>
+            <Animated.View style={animatedLogoStyle}>
+              <Surface style={styles.logoSurface} elevation={2}>
+                <Avatar.Icon 
+                  size={80} 
+                  icon="file-document-outline" 
+                  style={[styles.logoAvatar, { backgroundColor: theme.colors.primary }]}
                 />
-              </TouchableOpacity>
-            </View>
-
-            {/* Forgot Password */}
-            <TouchableOpacity
-              onPress={navigateToForgotPassword}
-              style={styles.forgotPassword}
-              disabled={isLoading}
-            >
-              <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.loginButton, (isLoading || !email.trim() || !password.trim()) && styles.loginButtonDisabled]}
-              onPress={async () => {}}
-              disabled={isLoading || !email.trim() || !password.trim()}
-            >
-              {isEmailLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>O continúa con</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Google Login */}
-            <TouchableOpacity
-              style={[styles.googleButton, isLoading && styles.googleButtonDisabled]}
-              onPress={handleGoogleLogin}
-              disabled={isLoading}
-            >
-              {isGoogleLoading ? (
-                <ActivityIndicator color="#4285F4" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="logo-google" size={20} color="#4285F4" style={styles.googleIcon} />
-                  <Text style={styles.googleButtonText}>Continuar con Google</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
-            <TouchableOpacity
-              onPress={navigateToRegister}
-              disabled={isLoading}
-            >
-              <Text style={[styles.footerLink, isLoading && styles.footerLinkDisabled]}>
-                Regístrate
+              </Surface>
+            </Animated.View>
+            
+            <Animated.View style={animatedTitleStyle}>
+              <Text variant="headlineLarge" style={[styles.appName, { color: theme.colors.onBackground }]}>
+                InfoVault
               </Text>
-            </TouchableOpacity>
+              <Text variant="bodyLarge" style={[styles.appSubtitle, { color: theme.colors.onSurfaceVariant }]}>
+                Gestión de Documentos
+              </Text>
+            </Animated.View>
           </View>
-        </ScrollView>
+
+          {/* Center Text */}
+          <View style={styles.centerSection}>
+            <Animated.View style={animatedCenterStyle}>
+              <Surface style={styles.centerSurface} elevation={1}>
+                <Text 
+                  variant="headlineLarge" 
+                  style={[
+                    styles.centerText, 
+                    { color: theme.colors.primary }
+                  ]}
+                >
+                  Informática
+                </Text>
+              </Surface>
+            </Animated.View>
+          </View>
+
+          {/* Google Button - Bottom */}
+          <Animated.View style={[styles.bottomSection, animatedButtonStyle]}>
+            <Button
+              mode="outlined"
+              onPress={handleGoogleLogin}
+              disabled={isAnyLoading}
+              loading={isGoogleLoading}
+              icon="google"
+              contentStyle={styles.buttonContent}
+              style={[styles.googleButton, { borderColor: theme.colors.primary }]}
+              labelStyle={[styles.buttonLabel, { color: theme.colors.primary }]}
+            >
+              {isGoogleLoading ? 'Iniciando sesión...' : 'Continuar con Google'}
+            </Button>
+            
+            {isAnyLoading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text variant="bodySmall" style={[styles.loadingText, { color: theme.colors.onSurfaceVariant }]}>
+                  Conectando con Google...
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -172,139 +257,82 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   keyboardContainer: {
     flex: 1,
   },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
   },
-  header: {
+  
+  // Brand Section (Top)
+  brandSection: {
     alignItems: 'center',
+    marginTop: 60,
     marginBottom: 40,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+  logoSurface: {
+    borderRadius: 50,
+    marginBottom: 24,
+    padding: 8,
+  },
+  logoAvatar: {
+    marginBottom: 0,
+  },
+  appName: {
     marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
     textAlign: 'center',
+    fontWeight: 'bold',
   },
-  form: {
-    width: '100%',
+  appSubtitle: {
+    textAlign: 'center',
+    opacity: 0.8,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    backgroundColor: '#f9f9f9',
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
+
+  // Center Section
+  centerSection: {
     flex: 1,
-    height: 50,
-    fontSize: 16,
-    color: '#333',
-  },
-  passwordInput: {
-    paddingRight: 40,
-  },
-  passwordToggle: {
-    position: 'absolute',
-    right: 12,
-    padding: 5,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 20,
-  },
-  forgotPasswordText: {
-    color: '#4285F4',
-    fontSize: 14,
-  },
-  loginButton: {
-    backgroundColor: '#4285F4',
-    borderRadius: 8,
-    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
   },
-  loginButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  divider: {
-    flexDirection: 'row',
+  centerSurface: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: 'center',
-    marginVertical: 20,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#ddd',
+  centerText: {
+    textAlign: 'center',
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
-  dividerText: {
-    marginHorizontal: 15,
-    color: '#666',
-    fontSize: 14,
+
+  // Bottom Section
+  bottomSection: {
+    marginBottom: 40,
+    gap: 16,
   },
   googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    height: 50,
-    backgroundColor: '#fff',
+    borderRadius: 28,
+    borderWidth: 2,
   },
-  googleButtonDisabled: {
-    opacity: 0.6,
+  buttonContent: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
-  googleIcon: {
-    marginRight: 10,
-  },
-  googleButtonText: {
-    color: '#333',
+  buttonLabel: {
     fontSize: 16,
-    fontWeight: '500',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 30,
-  },
-  footerText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  footerLink: {
-    color: '#4285F4',
-    fontSize: 14,
     fontWeight: '600',
   },
-  footerLinkDisabled: {
-    opacity: 0.6,
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    opacity: 0.7,
   },
 });
-
-export default LoginScreen;

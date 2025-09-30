@@ -14,7 +14,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../navigation/AppNavigator';
+
+type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function RegisterScreen() {
   const [formData, setFormData] = useState({
@@ -28,8 +32,8 @@ export default function RegisterScreen() {
   const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const { signUpWithEmail, signInWithGoogle, isLoading } = useAuth();
-  const router = useRouter();
+  const { isLoading, loginWithGoogle } = useAuth();
+  const navigation = useNavigation<RegisterScreenNavigationProp>();
 
   const updateFormData = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -75,27 +79,15 @@ export default function RegisterScreen() {
   const handleEmailRegister = async () => {
     if (!validateForm()) return;
 
+    setIsEmailLoading(true);
     try {
-      setIsEmailLoading(true);
-      await signUpWithEmail(
-        formData.email.trim(),
-        formData.password,
-        formData.name.trim()
+      // Por ahora, como no tienes registro por email, mostrar mensaje
+      Alert.alert(
+        'Información', 
+        'El registro por email estará disponible próximamente. Por favor usa Google para registrarte.'
       );
-      
-      console.log('✅ Registro exitoso, redirigiendo...');
-      
-    } catch (error) {
-      console.error('❌ Error en registro:', error);
-      
-      let errorMessage = 'Ocurrió un error durante el registro';
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      Alert.alert('Error', errorMessage);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Error durante el registro');
     } finally {
       setIsEmailLoading(false);
     }
@@ -104,11 +96,16 @@ export default function RegisterScreen() {
   const handleGoogleRegister = async () => {
     try {
       setIsGoogleLoading(true);
-      await signInWithGoogle();
       
-      console.log('✅ Registro con Google exitoso, redirigiendo...');
+      const result = await loginWithGoogle();
       
-    } catch (error) {
+      if (result.success) {
+        console.log('✅ Registro con Google exitoso');
+      } else {
+        Alert.alert('Error', result.error || 'Error durante el registro con Google');
+      }
+      
+    } catch (error: any) {
       console.error('❌ Error en registro con Google:', error);
       
       let errorMessage = 'Error durante el registro con Google';
@@ -123,13 +120,15 @@ export default function RegisterScreen() {
   };
 
   const navigateToLogin = () => {
-    router.push('/auth/login');
+    navigation.goBack(); // Regresar al login
   };
 
   const isFormValid = () => {
     const { name, email, password, confirmPassword } = formData;
     return name.trim() && email.trim() && password && confirmPassword;
   };
+
+  const isAnyLoading = isLoading || isEmailLoading || isGoogleLoading;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -147,7 +146,7 @@ export default function RegisterScreen() {
           {/* Form */}
           <View style={styles.form}>
             {/* Name Input */}
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, isAnyLoading && styles.inputDisabled]}>
               <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
@@ -156,12 +155,13 @@ export default function RegisterScreen() {
                 onChangeText={(value) => updateFormData('name', value)}
                 autoCapitalize="words"
                 autoCorrect={false}
-                editable={!isLoading}
+                editable={!isAnyLoading}
+                placeholderTextColor="#999"
               />
             </View>
 
             {/* Email Input */}
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, isAnyLoading && styles.inputDisabled]}>
               <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
@@ -171,12 +171,13 @@ export default function RegisterScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!isLoading}
+                editable={!isAnyLoading}
+                placeholderTextColor="#999"
               />
             </View>
 
             {/* Password Input */}
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, isAnyLoading && styles.inputDisabled]}>
               <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.passwordInput]}
@@ -186,12 +187,13 @@ export default function RegisterScreen() {
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!isLoading}
+                editable={!isAnyLoading}
+                placeholderTextColor="#999"
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.passwordToggle}
-                disabled={isLoading}
+                disabled={isAnyLoading}
               >
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
@@ -202,7 +204,7 @@ export default function RegisterScreen() {
             </View>
 
             {/* Confirm Password Input */}
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, isAnyLoading && styles.inputDisabled]}>
               <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.passwordInput]}
@@ -212,12 +214,13 @@ export default function RegisterScreen() {
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!isLoading}
+                editable={!isAnyLoading}
+                placeholderTextColor="#999"
               />
               <TouchableOpacity
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                 style={styles.passwordToggle}
-                disabled={isLoading}
+                disabled={isAnyLoading}
               >
                 <Ionicons
                   name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
@@ -229,9 +232,12 @@ export default function RegisterScreen() {
 
             {/* Register Button */}
             <TouchableOpacity
-              style={[styles.registerButton, (!isFormValid() || isLoading) && styles.registerButtonDisabled]}
+              style={[
+                styles.registerButton, 
+                (!isFormValid() || isAnyLoading) && styles.registerButtonDisabled
+              ]}
               onPress={handleEmailRegister}
-              disabled={!isFormValid() || isLoading}
+              disabled={!isFormValid() || isAnyLoading}
             >
               {isEmailLoading ? (
                 <ActivityIndicator color="#fff" size="small" />
@@ -249,16 +255,16 @@ export default function RegisterScreen() {
 
             {/* Google Register */}
             <TouchableOpacity
-              style={[styles.googleButton, isLoading && styles.googleButtonDisabled]}
+              style={[styles.googleButton, isAnyLoading && styles.googleButtonDisabled]}
               onPress={handleGoogleRegister}
-              disabled={isLoading}
+              disabled={isAnyLoading}
             >
               {isGoogleLoading ? (
                 <ActivityIndicator color="#4285F4" size="small" />
               ) : (
                 <>
                   <Ionicons name="logo-google" size={20} color="#4285F4" style={styles.googleIcon} />
-                  <Text style={styles.googleButtonText}>Continuar con Google</Text>
+                  <Text style={styles.googleButton}>Continuar con Google</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -269,9 +275,9 @@ export default function RegisterScreen() {
             <Text style={styles.footerText}>¿Ya tienes una cuenta? </Text>
             <TouchableOpacity
               onPress={navigateToLogin}
-              disabled={isLoading}
+              disabled={isAnyLoading}
             >
-              <Text style={[styles.footerLink, isLoading && styles.footerLinkDisabled]}>
+              <Text style={[styles.footerLink, isAnyLoading && styles.footerLinkDisabled]}>
                 Inicia Sesión
               </Text>
             </TouchableOpacity>
@@ -285,7 +291,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f7f7f7',
   },
   keyboardContainer: {
     flex: 1,
@@ -293,74 +299,83 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: 16,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    textAlign: 'center',
   },
   form: {
-    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 24,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    position: 'relative',
     marginBottom: 16,
-    paddingHorizontal: 12,
-    backgroundColor: '#f9f9f9',
-  },
-  inputIcon: {
-    marginRight: 10,
   },
   input: {
-    flex: 1,
-    height: 50,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    paddingHorizontal: 40,
     fontSize: 16,
     color: '#333',
   },
+  inputIcon: {
+    position: 'absolute',
+    left: 10,
+    top: 14,
+  },
   passwordInput: {
-    paddingRight: 40,
+    paddingRight: 50,
   },
   passwordToggle: {
     position: 'absolute',
-    right: 12,
-    padding: 5,
-  },
-  registerButton: {
-    backgroundColor: '#4285F4',
-    borderRadius: 8,
-    height: 50,
+    right: 10,
+    top: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 10,
   },
-  registerButtonDisabled: {
-    backgroundColor: '#ccc',
+  registerButton: {
+    backgroundColor: '#007bff',
+    borderRadius: 4,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
   },
   registerButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+  },
+  registerButtonDisabled: {
+    backgroundColor: '#007bff',
+    opacity: 0.6,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 24,
   },
   dividerLine: {
     flex: 1,
@@ -368,47 +383,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#ddd',
   },
   dividerText: {
-    marginHorizontal: 15,
-    color: '#666',
+    marginHorizontal: 8,
     fontSize: 14,
+    color: '#666',
   },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
-    height: 50,
-    backgroundColor: '#fff',
   },
   googleButtonDisabled: {
     opacity: 0.6,
   },
   googleIcon: {
-    marginRight: 10,
-  },
-  googleButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '500',
+    marginRight: 8,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    marginTop: 32,
     alignItems: 'center',
-    marginTop: 30,
   },
   footerText: {
-    color: '#666',
     fontSize: 14,
+    color: '#666',
   },
   footerLink: {
-    color: '#4285F4',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#007bff',
+    fontWeight: 'bold',
   },
   footerLinkDisabled: {
+    opacity: 0.6,
+  },
+  inputDisabled: {
     opacity: 0.6,
   },
 });

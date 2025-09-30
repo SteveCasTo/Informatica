@@ -1,19 +1,30 @@
+# Node.js
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
+# Build
+dist/
+build/
+.expo/
+web-build/
+
+# Prisma
+*.db
+.prisma/
+
+# Expo
+.expo-shared/
+.expo/*
+.expo-dev/
+
+# Environment
 .env
 .env.local
+.env.*.local
 
-# API
-apps/api/dist/
-apps/api/build/
-apps/api/uploads/
-
-# Mobile
-apps/mobile/.expo/
-apps/mobile/dist/
-apps/mobile/web-build/
-apps/mobile/.expo-shared/
-
-# React Native
-apps/mobile/android/
-apps/mobile/ios/
+# OS
+.DS_Store
+Thumbs.db

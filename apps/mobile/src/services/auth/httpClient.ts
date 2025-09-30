@@ -1,8 +1,6 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { BASE_URL } from '../../utils/constants/constants';
-
-console.log('🚀 HTTP Client configurado con URL:', BASE_URL);
 
 export const httpClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -15,17 +13,17 @@ export const httpClient: AxiosInstance = axios.create({
 });
 
 httpClient.interceptors.request.use(
-  async (config: AxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     try {
       const token = await SecureStore.getItemAsync('auth_token');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
-      console.error('❌ Error obteniendo token:', error);
+      console.error('Error obteniendo token:', error);
     }
     
-    console.log('📡 HTTP Request:', {
+    console.log('HTTP Request:', {
       method: config.method?.toUpperCase(),
       url: config.url,
       baseURL: config.baseURL,
@@ -36,7 +34,7 @@ httpClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ Request interceptor error:', error);
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -44,7 +42,7 @@ httpClient.interceptors.request.use(
 // Interceptor para manejar respuestas
 httpClient.interceptors.response.use(
   (response) => {
-    console.log('✅ HTTP Response:', {
+    console.log('HTTP Response:', {
       status: response.status,
       url: response.config.url,
       data: response.data,
@@ -52,7 +50,7 @@ httpClient.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.error('❌ HTTP Error:', {
+    console.error('HTTP Error:', {
       status: error.response?.status,
       url: error.config?.url,
       message: error.message,
@@ -60,12 +58,12 @@ httpClient.interceptors.response.use(
     });
     
     if (error.response?.status === 401) {
-      console.log('🔐 Token expirado, limpiando storage...');
+      console.log('Token expirado, limpiando storage...');
       try {
         await SecureStore.deleteItemAsync('auth_token');
         await SecureStore.deleteItemAsync('auth_user');
       } catch (cleanupError) {
-        console.error('❌ Error limpiando storage:', cleanupError);
+        console.error('Error limpiando storage:', cleanupError);
       }
     }
     

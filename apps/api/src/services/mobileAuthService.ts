@@ -33,9 +33,6 @@ export class MobileAuthService {
 
   generateMobileAuthUrl(): string {
     const redirectUri = `${process.env.BACKEND_URL || 'http://localhost:3001'}/api/auth/google/mobile/callback`;
-    
-    console.log('📍 Backend redirect URI:', redirectUri);
-    
     const params = new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID!,
       redirect_uri: redirectUri,

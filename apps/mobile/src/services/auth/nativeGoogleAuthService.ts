@@ -26,16 +26,15 @@ export class NativeGoogleAuthService {
       });
 
       this.configured = true;
-      console.log('✅ Google Sign-In configurado');
     } catch (error) {
-      console.error('❌ Error configurando Google Sign-In:', error);
+      console.error('Error configurando Google Sign-In:', error);
       throw new Error('No se pudo configurar autenticación con Google');
     }
   }
 
   async signInWithGoogle(): Promise<AuthResult> {
     try {
-      console.log('🔄 Iniciando autenticación nativa...');
+      console.log('Iniciando autenticación nativa...');
       await this.ensureConfigured();
 
       await GoogleSignin.hasPlayServices({
@@ -48,7 +47,7 @@ export class NativeGoogleAuthService {
         throw new Error('No se obtuvo ID token de Google');
       }
 
-      console.log('📤 Enviando ID token al backend...');
+      console.log('Enviando ID token al backend...');
       const { data } = await httpClient.post('/api/auth/google/native', {
         idToken
       });
@@ -78,9 +77,9 @@ export class NativeGoogleAuthService {
     try {
       await this.ensureConfigured();
       await GoogleSignin.signOut();
-      console.log('👋 Sign out nativo exitoso');
+      console.log('Sign out nativo exitoso');
     } catch (error) {
-      console.error('❌ Error en sign out:', error);
+      console.error('Error en sign out:', error);
     }
   }
 }

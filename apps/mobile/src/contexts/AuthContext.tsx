@@ -3,10 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthService } from '../services/api/auth';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import { API_CONFIG } from '../config/api';
+import { GOOGLE_AUTH_URL, GOOGLE_WEB_CLIENT_ID } from '../utils/constants/constants';
 
 WebBrowser.maybeCompleteAuthSession();
 
-interface User {
+export interface User {
   user_id: number;
   username: string;
   email: string;
@@ -23,7 +25,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   error: string | null;
   loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
-  loginWithCredentials: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -38,54 +39,92 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const redirectUri = 'https://unplunderous-tolerative-trinh.ngrok-free.dev/api/auth/google/callback';
+  const discovery = {
+    authorizationEndpoint: GOOGLE_AUTH_URL,
+  };
+
+  const redirectUri = `${API_CONFIG.BASE_URL}/auth/google/callback`;
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest({
-    clientId: '252022146350-n6tkf8de9pmhf1kqbk1dva1635m8du59.apps.googleusercontent.com',
+    clientId: GOOGLE_WEB_CLIENT_ID,
     scopes: ['openid', 'profile', 'email'],
     redirectUri,
     responseType: AuthSession.ResponseType.Code,
     usePKCE: false,
-    // AGREGAR ESTO PARA FORZAR SELECCIÓN DE CUENTA
     extraParams: {
-      prompt: 'select_account' // Esto fuerza a Google a mostrar la selección de cuenta
+      prompt: 'select_account'
     }
-  }, {
-    authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  });
+  }, discovery);
 
-  // Manejar respuesta de Google
   useEffect(() => {
     if (response?.type === 'success') {
-      setIsLoading(false);
+      handleGoogleResponse(response);
     } else if (response?.type === 'error') {
-      setError('Error en autenticación con Google');
+      console.error('Google Auth Error:', response.error);
+      setError(`Error en autenticación: ${response.error?.message || 'Error desconocido'}`);
+      setIsLoading(false);
+    } else if (response?.type === 'cancel') {
+      console.log('Google Auth Cancelled');
+      setError('Autenticación cancelada');
       setIsLoading(false);
     }
   }, [response]);
 
+  const handleGoogleResponse = async (authResponse: AuthSession.AuthSessionResult) => {
+    if (authResponse.type === 'success' && authResponse.params?.code) {
+      try {
+        setIsLoading(true);
+        
+        const result = await AuthService.exchangeGoogleCode(
+          authResponse.params.code,
+          redirectUri
+        );
+
+        if (result.success && result.data) {
+          if (result.data.token) {
+            await AuthService.saveToken(result.data.token);
+          }
+          
+          if (result.data.user) {
+            setUser(result.data.user);
+          }
+          
+          setError(null);
+        } else {
+          throw new Error(result.error || 'Error al procesar respuesta de Google');
+        }
+      } catch (error: unknown) {
+        console.error('Error processing Google response:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Error procesando respuesta de Google';
+        setError(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   const checkAuthStatus = async () => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await AuthService.getToken();
       
       if (token) {
         try {
           const profile = await AuthService.getProfile();
           
-          if (profile.success) {
+          if (profile.success && profile.data) {
             setUser(profile.data);
           } else {
             await AuthService.removeToken();
             setUser(null);
           }
-        } catch (error) {
+        } catch {
           await AuthService.removeToken();
           setUser(null);
         }
       } else {
         setUser(null);
       }
-    } catch (error) {
+    } catch {
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -93,50 +132,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      setIsLoading(true);
-      await checkAuthStatus();
-      setIsLoading(false);
-    };
-
-    initializeAuth();
+    checkAuthStatus();
   }, []);
 
   const loginWithGoogle = async () => {
     try {
       setIsLoading(true);
       setError(null);
+
+      if (!request) {
+        throw new Error('Configuración de autenticación no está lista');
+      }
       
-      await promptAsync();
-      await checkAuthStatus();
+      // Ejecutar prompt
+      const result = await promptAsync();
       
+      if (result.type === 'cancel') {
+        setError('Autenticación cancelada por el usuario');
+        return { success: false, error: 'Cancelado por el usuario' };
+      }
+      checkAuthStatus();
       return { success: true };
       
-    } catch (error) {
-      const errorMessage = error.message || 'Error de conexión con Google';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loginWithCredentials = async (email: string, password: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const response = await AuthService.loginWithCredentials(email, password);
-      
-      if (response.success && response.data) {
-        await AuthService.saveToken(response.data.token);
-        setUser(response.data.user);
-        return { success: true };
-      } else {
-        throw new Error('Credenciales inválidas');
-      }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Error al iniciar sesión';
+    } catch (error: unknown) {
+      console.error('Error en loginWithGoogle:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error de conexión con Google';
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -152,6 +172,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setError(null);
     } catch (error) {
+      console.error('Error during logout:', error);
+      // Forzar logout local aunque falle el servidor
       await AuthService.removeToken();
       setUser(null);
     } finally {
@@ -165,7 +187,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: !!user,
     error,
     loginWithGoogle,
-    loginWithCredentials,
     logout,
   };
 

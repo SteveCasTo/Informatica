@@ -1,26 +1,16 @@
 // apps/mobile/src/config/api.ts
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { BASE_URL } from '../utils/constants/constants';
+import { AUTH_URL, BASE_URL } from '../utils/constants/constants';
 
 const getApiUrl = (): string => {
-  console.log('🔍 Configurando API URL...');
-  console.log('📱 Platform:', Platform.OS);
-  console.log('🛠️ __DEV__:', __DEV__);
-  console.log('🔧 Constants.expoConfig?.extra:', Constants.expoConfig?.extra);
-  
-  // En desarrollo, usar ngrok
+
   if (__DEV__) {
     const ngrokUrl = Constants.expoConfig?.extra?.apiUrl || 
                      process.env.EXPO_PUBLIC_API_URL ||
                      BASE_URL;
-    
-    console.log('🔗 Usando ngrok URL:', ngrokUrl);
     return ngrokUrl;
   }
-  
-  // En producción
-  console.log('🌐 Usando URL de producción');
   return 'https://tu-servidor-produccion.com/api';
 };
 
@@ -46,23 +36,10 @@ export const getEnvironmentInfo = () => {
     isExpoGo,
     apiUrl: API_BASE_URL,
     platform: Platform.OS,
-    shouldUseNative: !isExpoGo, // Usar nativo solo si NO es Expo Go
+    shouldUseNative: !isExpoGo,
   };
 };
 
-console.log('🌐 Environment configurado:', {
-  apiUrl: API_BASE_URL,
-  isDev: __DEV__,
-  platform: Platform.OS
-});
-
 export const API_CONFIG = {
-  // Asegúrate de que esta URL sea correcta
-  BASE_URL: 'https://unplunderous-tolerative-trinh.ngrok-free.dev/api',
-  // NO debe tener barra al final
-  
-  // Si tienes otros endpoints o configuración, manténlos
+  BASE_URL: AUTH_URL,
 };
-
-// Log para verificar configuración
-console.log('🔧 API_CONFIG cargado:', API_CONFIG);

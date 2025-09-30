@@ -6,7 +6,7 @@ import { TokenPayload, GoogleUserInfo } from '../types/auth'
 import { UserRole, UserStatus } from '@prisma/client'
 import { createError } from '../middleware/errorHandler'
 import { MobileAuthService } from './mobileAuthService'
-type StringValue = string | String
+type StringValue = string
 
 export class AuthService {
   private jwtSecret: Secret
@@ -37,7 +37,6 @@ export class AuthService {
       
       return jwt.sign(payload, this.jwtSecret, options)
     } catch (error) {
-      console.error('Error generando token:', error);
       throw createError('Error generando token', 500)
     }
   }
@@ -88,13 +87,7 @@ export class AuthService {
 
   async processGoogleAuth(code: string, redirectUri?: string) {
     try {
-      console.log('🔄 Procesando autenticación de Google...');
-      console.log('📋 Código:', code);
-      console.log('📍 Redirect URI:', redirectUri);
-
-      // Determinar plataforma basada en el redirect URI
       const platform = redirectUri?.includes('/mobile/') ? 'android' : 'web';
-      console.log('📱 Plataforma detectada:', platform);
 
       const accessToken = await this.googleAuthService.exchangeCodeForTokens(
         code, 
@@ -129,18 +122,14 @@ export class AuthService {
         role: user.user_role
       });
 
-      console.log('✅ Autenticación exitosa para:', user.email);
-
       return {
         user: this.sanitizeUser(user),
         token
       };
     } catch (error) {
       if (error instanceof Error) {
-        console.error('❌ Error en processGoogleAuth:', error.message);
         throw createError(`Error en autenticación: ${error.message}`, 400);
       } else {
-        console.error('❌ Error desconocido en processGoogleAuth:', error);
         throw createError('Error en autenticación', 400);
       }
     }
@@ -202,9 +191,9 @@ export class AuthService {
     })
   }
 
-  private sanitizeUser(user: any) {
+  private sanitizeUser(user: unknown) {
     if (typeof user === 'object' && user !== null && 'password_hash' in user) {
-      const { password_hash, ...sanitizedUser } = user
+      const { ...sanitizedUser } = user
       return sanitizedUser
     }
     return user
@@ -212,7 +201,6 @@ export class AuthService {
 
   async getUserProfile(userId: number) {
     try {
-      console.log('🔍 Obteniendo perfil para usuario ID:', userId);
       
       const user = await this.userRepository.findById(userId);
       
@@ -223,12 +211,9 @@ export class AuthService {
       if (!user.active || user.status !== UserStatus.active) {
         throw createError('Usuario suspendido o inactivo', 403);
       }
-
-      console.log('✅ Perfil encontrado para:', user.email);
       return this.sanitizeUser(user);
       
     } catch (error) {
-      console.error('❌ Error obteniendo perfil del usuario:', error);
       throw error;
     }
   }

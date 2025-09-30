@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import * as Application from 'expo-application';
+import { AUTH_URL } from '../utils/constants/constants';
 
 export const isExpoGo = Constants.executionEnvironment === 'storeClient';
 export const isDevelopment = __DEV__;
@@ -19,7 +20,5 @@ export const getEnvironmentInfo = () => ({
 });
 
 export const environment = {
-  // VERIFICAR que esta URL sea correcta
-  apiUrl: 'https://unplunderous-tolerative-trinh.ngrok-free.dev/api',
-  // NO debería tener '/api' al final si ya lo agregas en el service
+  apiUrl: AUTH_URL,
 };

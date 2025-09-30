@@ -2,7 +2,6 @@ import axios from 'axios'
 import { googleConfig } from '../config/google'
 import { GoogleUserInfo } from '../types/auth'
 import { createError } from '../middleware/errorHandler'
-import { appConfig } from '../config/app'
 
 export class GoogleAuthService {
   
@@ -37,8 +36,7 @@ export class GoogleAuthService {
       const response = await axios.post('https://oauth2.googleapis.com/token', tokenData);
 
       return response.data.access_token;
-    } catch (error: any) {
-      console.error('Error obteniendo tokens de Google:', error.response?.data);
+    } catch {
       throw createError('Error obteniendo tokens de Google', 500);
     }
   }
@@ -61,7 +59,6 @@ export class GoogleAuthService {
 
       return userInfo;
     } catch {
-      console.error('Error obteniendo información del usuario de Google:');
       throw createError('Error obteniendo información del usuario de Google', 500);
     }
   }

@@ -1,28 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG } from '../../config/api';
+import { ApiResponse, User, AuthResult } from '../../types/auth';
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
-
-export interface AuthData {
-  user: {
-    user_id: number;
-    username: string;
-    email: string;
-    google_id?: string;
-    profile_picture?: string;
-    user_role: string;
-    status: string;
-    registration_date: string;
-  };
-  token: string;
-}
-
-// Cliente HTTP básico
 class APIClient {
   private baseURL: string;
 
@@ -30,9 +9,9 @@ class APIClient {
     this.baseURL = API_CONFIG.BASE_URL;
   }
 
-  private async getHeaders(): Promise<HeadersInit> {
+  private async getHeaders(): Promise<Record<string, string>> {
     const token = await AsyncStorage.getItem('authToken');
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'ngrok-skip-browser-warning': 'true',
     };
@@ -45,84 +24,61 @@ class APIClient {
   }
 
   async get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    try {
-      const headers = await this.getHeaders();
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
-        method: 'GET',
-        headers,
-      });
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'GET',
+      headers,
+    });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error: any) {
-      throw error;
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
+
+    return await response.json();
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
-    try {
-      const headers = await this.getHeaders();
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: data ? JSON.stringify(data) : undefined,
-      });
+  async post<T>(endpoint: string, data?: Record<string, unknown>): Promise<ApiResponse<T>> {
+    const headers = await this.getHeaders();
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error: any) {
-      throw error;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
     }
+
+    return await response.json();
   }
 }
 
-// Instancia global del cliente
 const api = new APIClient();
 
-// Servicio de autenticación
 export class AuthService {
-  // Método para intercambiar código de Google
-  static async exchangeGoogleCode(code: string, redirectUri: string): Promise<ApiResponse<AuthData>> {
-    return api.post<AuthData>('/auth/exchange', {
+  static async exchangeGoogleCode(code: string, redirectUri: string): Promise<ApiResponse<AuthResult>> {
+    return api.post<AuthResult>('/auth/google/callback', {
       code,
       redirectUri
     });
   }
 
-  // Login con credenciales
-  static async loginWithCredentials(email: string, password: string): Promise<ApiResponse<AuthData>> {
-    return api.post<AuthData>('/auth/login', {
-      email,
-      password
-    });
-  }
-
-  // Obtener perfil del usuario
-  static async getProfile(): Promise<ApiResponse<any>> {
+  static async getProfile(): Promise<ApiResponse<User>> {
     try {
-      const result = await api.get('/auth/profile');
-      return result;
-    } catch (error: any) {
+      return await api.get<User>('/auth/profile');
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message || 'Network request failed'
+        error: (error as Error).message || 'Network request failed'
       };
     }
   }
 
-  // Logout
-  static async logout(): Promise<ApiResponse<any>> {
+  static async logout(): Promise<ApiResponse<void>> {
     return api.post('/auth/logout');
   }
 
-  // Métodos para manejo de tokens
   static async saveToken(token: string): Promise<void> {
     await AsyncStorage.setItem('authToken', token);
   }
