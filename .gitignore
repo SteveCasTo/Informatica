@@ -7,7 +7,6 @@ node_modules/
 apps/api/dist/
 apps/api/build/
 apps/api/uploads/
-apps/api/prisma/migrations/
 
 # Mobile
 apps/mobile/.expo/
