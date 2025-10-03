@@ -203,6 +203,7 @@ model Subject {
   subject_id   Int       @id @default(autoincrement())
   subject_name String    
   description  String?   
+  semester     Int
   active       Boolean   @default(true)
   creation_date DateTime @default(now())
 
@@ -211,7 +212,9 @@ model Subject {
   notifications Notification[]
 
   @@map("subjects")
+  @@unique([subject_name], map: "uq_subjects_name")
 }
+
 
 model SubjectEnrollment {
   enrollment_id Int       @id @default(autoincrement())
