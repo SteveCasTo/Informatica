@@ -1,0 +1,98 @@
+{
+  "project_info": {
+    "project_number": "42355698539",
+    "project_id": "bobrito-bandito",
+    "storage_bucket": "bobrito-bandito.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:42355698539:android:27b480beee5309a8843a2e",
+        "android_client_info": {
+          "package_name": "com.informatica.umss"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "42355698539-lm2teonteeam76373o6m0e9lj471t7si.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.informatica.umss",
+            "certificate_hash": "c397064506239d1a8269699613eb0847a207df30"
+          }
+        },
+        {
+          "client_id": "42355698539-949qe588mkh2vtr9hb8deft79tessplf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmU1YnyTLLlf4ALsdd0OgWEODQNISxwRE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "42355698539-949qe588mkh2vtr9hb8deft79tessplf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "42355698539-8drp205l9dbduo45k8cephm50ao5s73f.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.informatica.umss"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:42355698539:android:a3ba5bbc07358718843a2e",
+        "android_client_info": {
+          "package_name": "com.stevecasto.informaticapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "42355698539-havjea5qu8n16pdu697ose708kddrevp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.stevecasto.informaticapp",
+            "certificate_hash": "c397064506239d1a8269699613eb0847a207df30"
+          }
+        },
+        {
+          "client_id": "42355698539-949qe588mkh2vtr9hb8deft79tessplf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmU1YnyTLLlf4ALsdd0OgWEODQNISxwRE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "42355698539-949qe588mkh2vtr9hb8deft79tessplf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "42355698539-8drp205l9dbduo45k8cephm50ao5s73f.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.informatica.umss"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
